@@ -52,7 +52,11 @@ class Moderator:
         
         if self.state == State.REPORT_START:
             reply =  "Thank you for starting the report handling process. "
+            reply += "handle report about this message: \n"
+            reply += "```" + report.reported_userName + ": " + report.report_message.content + "```"
+            reply += "This message is reported by " +  report.userName + '\n'
             # reply += "Say `help` at any time for more information.\n\n"
+            reply += "User has reported this message as " + report.reason_type +'. '
             reply += "What is the reason for the report? (spam, harassment, doxing)"
             self.state = State.WAITING_REASON
             return [reply]
@@ -73,7 +77,7 @@ class Moderator:
             # return ["Please provide the user ID of the user being reported."]
         if self.state == State.WAITING_USER :
             if report.imminent_danger:
-                return ['The user has imminent dange so we will report to other moderator teams to verify the claim and report to authorities!']
+                return ['The user has imminent danger so we will report to other moderator teams to verify the claim and report to authorities!']
             else:
                 return await self.func(report.report_message, report, user, reported_user, channel)
         if self.state == State.WAITING_DOXING_TYPE or self.state == State.WAITING_FRAUD_TYPE or self.state==State.GOT_DOXING_TYPE:

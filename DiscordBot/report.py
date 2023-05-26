@@ -44,6 +44,7 @@ class Report:
         self.report_message = None
         self.handle_required = False
         self.mod_channel = None
+        self.reason_type = None
 
     async def handle_message(self, message, mod_channel):
         self.mod_channel = mod_channel
@@ -90,14 +91,20 @@ class Report:
             if self.reason == Reason.UNKNOWN:
                 if message.content.lower() == "spam":
                     self.reason = Reason.SPAM
+                    self.reason_type = "spam"
                 elif message.content.lower() == "harassment":
                     self.reason = Reason.HARASSMENT
+                    self.reason_type = "harassment"
                 elif message.content.lower() == "doxing":
                     self.reason = Reason.DOXING
+                    self.reason_type ="doxing"
                 elif message.content.lower() == "reporting on behalf of someone else":
                     self.reason = Reason.REPORT_OTHER
+                    self.reason_type = "reporting other"
+                    
                 elif message.content.lower() == "other":
                     self.reason = Reason.OTHER
+                    self.reason_type = "other"
                 else:
                     return ["Please specify the reason for your report."]
 
@@ -160,11 +167,11 @@ class Report:
         return self.state == State.REPORT_COMPLETE
     
     async def need_handle(self):
-        print('mod channel', mod_channel)
-        print('message', self.report_message.content)
-        print('user', self.reported_userName)
-        mod_response = "handle report about this message: \n"
-        mod_response += "```" + self.reported_userName + ": " + self.report_message.content + "```"
-        mod_response += "This message is reported by " +  self.userName
-        await self.mod_channel.send(mod_response)
+        # print('mod channel', mod_channel)
+        # print('message', self.report_message.content)
+        # print('user', self.reported_userName)
+        # mod_response = "handle report about this message: \n"
+        # mod_response += "```" + self.reported_userName + ": " + self.report_message.content + "```"
+        # mod_response += "This message is reported by " +  self.userName
+        # await self.mod_channel.send(mod_response)
         return self.handle_required 
