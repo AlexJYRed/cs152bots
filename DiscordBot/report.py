@@ -43,8 +43,10 @@ class Report:
         self.reported_userName = None
         self.report_message = None
         self.handle_required = False
+        self.mod_channel = None
 
     async def handle_message(self, message, mod_channel):
+        self.mod_channel = mod_channel
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.REPORT_COMPLETE
             return ["Report cancelled."]
@@ -150,17 +152,19 @@ class Report:
             elif message.content.lower() == "no":
                 self.isBlocked = False
                 self.askToBlock = False
-                print('mod channel', mod_channel)
-                print('message', self.report_message.content)
-                print('user', self.reported_userName)
-                mod_response = "handle report about this message: \n"
-                mod_response += "```" + self.reported_userName + ": " + self.report_message.content + "```"
-                mod_response += "This message is reported by " +  self.userName
-                await mod_channel.send(mod_response)
+                
                 self.state = State.REPORT_COMPLETE
                 return["User not blocked. Thank you for your report."]
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
-    def need_handle(self):
+    
+    async def need_handle(self):
+        print('mod channel', mod_channel)
+        print('message', self.report_message.content)
+        print('user', self.reported_userName)
+        mod_response = "handle report about this message: \n"
+        mod_response += "```" + self.reported_userName + ": " + self.report_message.content + "```"
+        mod_response += "This message is reported by " +  self.userName
+        await self.mod_channel.send(mod_response)
         return self.handle_required 

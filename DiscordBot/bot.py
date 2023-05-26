@@ -37,12 +37,15 @@ class ModBot(discord.Client):
         self.moderator = Moderator()
         self.reports = {} # Map from user IDs to the state of their report
         self.last_report = None
+        self.channel = None
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
         for guild in self.guilds:
             print(f' - {guild.name}')
         print('Press Ctrl-C to quit.')
+        
+        
 
         # Parse the group number out of the bot's name
         match = re.search('[gG]roup (\d+) [bB]ot', self.user.name)
@@ -54,6 +57,9 @@ class ModBot(discord.Client):
         # Find the mod channel in each guild that this bot should report to
         for guild in self.guilds:
             for channel in guild.text_channels:
+                if channel.name ==f'group-{self.group_num}':
+                    # print('guild id', guild.id)
+                    self.channel = channel
                 if channel.name == f'group-{self.group_num}-mod':
                     self.mod_channels[guild.id] = channel
         
@@ -112,10 +118,12 @@ class ModBot(discord.Client):
             # if message.channel.id == mod_channel.id and message.content[:6] == Moderator.HANDLE_KEYWORD:
             if self.last_report.need_handle():
                 print('handling the report')
-                reported_user = self.get_user(int(self.last_report.report_message.author.id))
+                reported_user =await self.fetch_user(int(self.last_report.report_message.author.id))
+                print('rpoert id', self.last_report.reported_userID)
+                print('user id', self.last_report.userID)
                 print('reported user', reported_user)
-                user = self.get_user(int(self.last_report.userID))
-                res = await self.moderator.handle_report(report = self.last_report, message = message, user = user, reported_user = reported_user)
+                user = await self.fetch_user(int(self.last_report.userID))
+                res = await self.moderator.handle_report(report = self.last_report, message = message, user = user, reported_user = reported_user, channel= self.channel)
                 if res is not None:
                     for r in res:
                         # await message.channel.send(r)
