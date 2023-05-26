@@ -2,6 +2,7 @@ from enum import Enum, auto
 import discord
 import re
 
+
 class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
@@ -36,8 +37,14 @@ class Report:
         self.imminent_danger = None
         self.askToBlock = False
         self.isBlocked = None
+        self.userID = None
+        self.reported_userID =None
+        self.userName = None
+        self.reported_userName = None
+        self.report_message = None
+        self.handle_required = False
 
-    async def handle_message(self, message):
+    async def handle_message(self, message, mod_channel):
         if message.content == self.CANCEL_KEYWORD:
             self.state = State.REPORT_COMPLETE
             return ["Report cancelled."]
@@ -48,10 +55,14 @@ class Report:
             reply += "Please copy paste the link to the message you want to report.\n"
             reply += "You can obtain this link by right-clicking the message and clicking `Copy Message Link`."
             self.state = State.AWAITING_MESSAGE
+            self.userID = message.author.id
+            self.userName = message.author.name
+            # print('user name', message.author.name)
             return [reply]
         
         if self.state == State.AWAITING_MESSAGE:
             m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
+            print('message',m)
             if not m:
                 return ["I'm sorry, I couldn't read that link. Please try again or say `cancel` to cancel."]
             guild = self.client.get_guild(int(m.group(1)))
@@ -62,9 +73,14 @@ class Report:
                 return ["It seems this channel was deleted or never existed. Please try again or say `cancel` to cancel."]
             try:
                 message = await channel.fetch_message(int(m.group(3)))
+                self.report_message = message
             except discord.errors.NotFound:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
             self.state = State.MESSAGE_IDENTIFIED
+            self.reported_userID = message.author.id
+            self.reported_userName = message.author.name
+            # print('reported user', message.author.name)
+            self.message = message.content
             return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
                     "What is your reason for reporting? You can say `spam`, `harassment`, `doxing`, `reporting on behalf of someone else`, or `other`."]
         
@@ -86,6 +102,7 @@ class Report:
             if self.reason == Reason.SPAM or self.reason == Reason.HARASSMENT or self.reason == Reason.REPORT_OTHER or self.reason == Reason.OTHER:
                 self.state = State.REPORT_COMPLETE
                 self.askToBlock = True
+                self.handle_required = True
                 return ["Thank you for the report. Our moderation team will take appropriate action. Would you like to block the user? You can say `yes` or `no`."]
             elif self.state == State.MESSAGE_IDENTIFIED and self.reason == Reason.DOXING and self.doxing_subreason == DoxingSubReason.UNKNOWN:
                 if message.content.lower() == "sensitive information about me":
@@ -101,12 +118,19 @@ class Report:
                     if self.imminent_danger == None:
                         return ["Does the information present an imminent physical danger to you? You can say `yes` or `no`."]
                     else:
-                        self.state = State.REPORT_COMPLETE
+                        mod_response = "handle report about this message: \n"
+                        mod_response += "```" + self.reported_userName + ": " + self.message + "```",
+                        mod_response += "This message is reported by " +  self.userName
+                        await mod_channel.send(mod_response)
+                        print('mod channel', mod_channel)
                         self.askToBlock = True
-                        if self.imminent_danger:
+                        if self.imminent_danger: 
+                            self.state = State.REPORT_COMPLETE
+                            self.handle_required = True
                             return ["Your report has been received. Our moderation team will investigate the situation and resolve the situation as soon as possible. In the meantime, would you like to block the user? You can say `yes` or `no`."]
-                        else:
-                            return ["Thank you for the report. Our moderation team will take appropriate action. Would you like to block the user? You can say `yes` or `no`."]
+                        else: 
+                            self.handle_required = True
+                            return ["Thank you for the report. Our moderation team will take appropriate action. Would you like to block the user? You can say `yes` or `no` to block the user."]
 
         if self.state == State.MESSAGE_IDENTIFIED and self.reason == Reason.DOXING and self.doxing_subreason != DoxingSubReason.UNKNOWN and self.imminent_danger == None:
             if message.content.lower() == "yes":
@@ -114,17 +138,29 @@ class Report:
             elif message.content.lower() == "no":
                 self.imminent_danger = False
             self.askToBlock = True
+            self.handle_required = True
             return ["We will remind the user of our doxing policy. Your report has been received. Our moderation team will take appropriate action. Would you like to block the user? You can say `yes` or `no`."]
         
         if self.askToBlock == True:
             if message.content.lower() == "yes":
                 self.isBlocked = True
                 self.askToBlock = False
+                self.state = State.REPORT_COMPLETE
                 return["User blocked. Thank you for your report."]
             elif message.content.lower() == "no":
                 self.isBlocked = False
                 self.askToBlock = False
+                print('mod channel', mod_channel)
+                print('message', self.report_message.content)
+                print('user', self.reported_userName)
+                mod_response = "handle report about this message: \n"
+                mod_response += "```" + self.reported_userName + ": " + self.report_message.content + "```"
+                mod_response += "This message is reported by " +  self.userName
+                await mod_channel.send(mod_response)
+                self.state = State.REPORT_COMPLETE
                 return["User not blocked. Thank you for your report."]
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
+    def need_handle(self):
+        return self.handle_required 
