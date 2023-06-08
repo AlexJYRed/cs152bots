@@ -9,6 +9,7 @@ import requests
 from report import Report
 from moderator import Moderator
 import pdb
+import openai
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
